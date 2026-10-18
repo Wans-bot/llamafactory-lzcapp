@@ -1,0 +1,31 @@
+LLaMA Factory 懒猫微服适配说明
+===============================
+
+本 LPK 是上游 LLaMA Factory 的适配打包版本。除下述一处「默认值」补丁外，
+未修改上游源码与功能逻辑。
+
+上游项目：https://github.com/hiyouga/LlamaFactory
+打包版本：v0.9.5（tag v0.9.5，commit 7af909522a95c031f8c3c1803d7ebd660d029c16）
+许可证：Apache License 2.0（全文见同目录 LICENSE）
+
+本包新增/附带内容（均为懒猫平台适配）：
+1. content/boot.sh —— 启动脚本：以持久目录 /work 作为 WebUI 工作目录，
+   首次运行复制内置数据集样例、预置中文界面语言、设置模型缓存路径（hf-mirror）。
+2. 启动补丁（boot.sh 内，soft-fail、幂等）：当容器内没有 NVIDIA 设备时，把两处
+   与精度相关的下拉默认值改为适合 CPU 的选项——
+   · Chat 页「推理数据类型」：auto → float32（上游 auto 会按模型 config 选 bfloat16）；
+   · Train 页「计算类型」：bf16 → fp32。
+   原因：普通 x86 CPU（无 AVX512-BF16）上 bfloat16 推理/训练极慢，实测同为 0.5B 模型
+   bf16 约 0.07 tok/s，fp32 约 6.9 tok/s；界面里用户仍可自行切换回 bf16/fp16/auto。
+   检测到 GPU 设备时不打该补丁。此项是唯一的默认值改动。
+3. content/lazycat-injects/lzc-file-chooser-inject.js —— 懒猫官方文件选择器拦截脚本
+   （来自官方文档《自动拦截文件选择器》，
+   sha256 4da22e7d0b3167de57a63cb5f31af13a2e98292a17c344ca71bce70331d453b5）。
+4. lzc-manifest.yml 中的 request 文件桥接与 browser 注入配置 —— 把 WebUI 中的文件
+   上传入口接入懒猫网盘文件选择器；并为上游缺失的 /manifest.json 与 /favicon.ico
+   返回最小合法响应，避免浏览器控制台 404。
+5. 应用图标取自上游仓库 assets/logo.png（v0.9.5），裁切左侧官方标志并等比缩放为
+   512x512 正方形，未重绘或改动设计。
+
+模型与数据来源：应用运行时从用户指定的模型源（默认 hf-mirror.com 镜像）下载模型与
+数据集，不由本包分发。

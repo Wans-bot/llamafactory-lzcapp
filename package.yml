@@ -1,0 +1,52 @@
+package: cloud.lazycat.app.llamafactory
+version: 0.9.5-5
+name: LLaMA Factory 大模型微调工作台
+description: 大模型微调与推理工作台：下载、LoRA 微调、对话、评测并导出 100+ 开源大模型（Llama、Qwen、DeepSeek 等），全中文界面。
+author: hiyouga (LLaMA-Factory)
+license: Apache-2.0
+homepage: https://github.com/hiyouga/LlamaFactory
+min_os_version: 1.6.0
+permissions:
+  required:
+    - net.internet
+locales:
+  zh-CN:
+    name: LLaMA Factory 大模型微调工作台
+    description: 大模型微调与推理工作台：下载、LoRA 微调、对话、评测并导出 100+ 开源大模型（Llama、Qwen、DeepSeek 等），全中文界面。
+    usage: |
+      LLaMA Factory 是开源的大模型微调与推理工作台，把「下载模型 → LoRA 微调 → 评测 → 对话试用 → 导出模型」整套流程集中在一个浏览器界面里完成，支持 Llama、Qwen、DeepSeek、Gemma、Mistral 等 100+ 开源模型与多模态模型。界面默认简体中文。
+
+      首次使用（以运行一个小模型为例）：
+      1. 打开应用即进入中文界面，无需注册或登录。
+      2. 在顶部「模型名称」下拉中选择模型（例如 Qwen2.5-0.5B-Instruct），切到「Chat」标签页点击「加载模型」——首次会自动从镜像源下载权重后再加载（也可先在「模型路径」填入本地目录）。0.5B~2B 的小模型适合在本机直接运行，更大的模型建议使用带 GPU 的设备。
+      3. 模型加载完成后即可对话；视觉/语音模型可在 Image、Video、Audio 标签页上传图片、视频或音频。CPU 设备已默认把「推理数据类型」设为 float32（比 bfloat16 快，可自行切换）。
+      4. 「Train」标签页可做 LoRA 微调：选择数据集（内置 identity 示例数据）、填写输出目录（如 /work/saves/my-run），点击「开始」训练；训练日志、进度和检查点都会保留在本机。
+      5. 「Export」标签页可把 LoRA 权重合并导出为完整的模型目录。
+
+      数据与持久化：
+      - 下载的模型、数据集、训练输出和界面设置都保存在微服本机，重启、升级不丢失。
+      - 模型与数据集默认通过 hf-mirror.com 镜像下载；如所在网络无法访问，可在安装或重新配置时为「HTTP 代理（可选）」填写代理地址。
+      - 模型文件体积较大，请预留足够的磁盘空间；训练和推理速度取决于设备性能，CPU 适合小模型，大模型建议配合 GPU 设备使用。
+      - 移动端可打开界面查看状态与对话，但训练等重操作建议在桌面端进行。
+
+      本应用为上游 LLaMA Factory（Apache-2.0）的懒猫适配版，仅有一处默认值适配（无 GPU 设备时「推理数据类型」默认 float32），详见包内 NOTICE；中文界面来自上游内置语言包。
+  en-US:
+    name: LLaMA Factory
+    description: "An all-in-one workbench for fine-tuning and running LLMs: download, LoRA-tune, chat, evaluate and export 100+ open models (Llama, Qwen, DeepSeek and more), with a built-in Chinese UI."
+    usage: |
+      LLaMA Factory is an open-source workbench for fine-tuning and running large language models. It brings model download, LoRA fine-tuning, evaluation, chat and model export into one browser UI, covering 100+ open models such as Llama, Qwen, DeepSeek, Gemma and Mistral, plus multimodal models. The UI ships with a Simplified Chinese locale and defaults to it.
+
+      First run (using a small model as an example):
+      1. Open the app: the UI is in Chinese by default. No sign-up or login required.
+      2. Pick a model in the "Model name" dropdown at the top (for example Qwen2.5-0.5B-Instruct), switch to the "Chat" tab and click "Load model": the first load downloads the weights from the mirror endpoint automatically (you may also put a local directory in "Model path"). Models of 0.5B-2B run on the box CPU; larger models are recommended on a GPU-equipped device.
+      3. Once loaded, start chatting. Multimodal models accept images, video or audio in the Image / Video / Audio sub-tabs. On CPU boxes the "Inference dtype" defaults to float32 (faster than bfloat16; switchable).
+      4. The "Train" tab runs LoRA fine-tuning: choose a dataset (the built-in identity sample), set an output dir such as /work/saves/my-run and click start. Logs, progress and checkpoints stay on your box.
+      5. The "Export" tab merges LoRA adapters into a full model directory.
+
+      Data and persistence:
+      - Models, datasets, training outputs and UI settings are stored on your box and survive restarts and upgrades.
+      - Models and datasets download from the hf-mirror.com endpoint by default. If your network cannot reach it, fill the optional "HTTP proxy" install parameter.
+      - Model files are large: keep enough free disk space. Training and inference speed depends on the device; CPU suits small models, use a GPU device for larger ones.
+      - Mobile browsers can open the UI for chat and status, but heavy operations such as training are best done on desktop.
+
+      This package is a LazyCat adaptation of upstream LLaMA Factory (Apache-2.0) with a single default-value adaptation (the "Inference dtype" box defaults to float32 when no GPU is present; see NOTICE). The Chinese UI comes from upstream locale files.

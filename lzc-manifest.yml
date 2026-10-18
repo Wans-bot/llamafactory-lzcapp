@@ -1,0 +1,128 @@
+# LLaMA Factory · 懒猫 LPK V2 运行清单（上游 v0.9.5）
+#
+# 设计要点：
+# 1. 单服务：官方镜像 hiyouga/llamafactory:0.9.5（已复制到懒猫源）。
+#    镜像自带 LlamaBoard WebUI（Gradio，监听 0.0.0.0:7860，内置 zh 语言包）。
+# 2. 启动链：entrypoint /bin/bash + command content/boot.sh ——
+#    以持久目录 /work 作为 WebUI 工作目录（data/saves/llamaboard_cache 等都在其中），
+#    首次运行复制镜像内置数据集样例、预置中文界面语言、设置模型缓存路径。
+# 3. 中文：上游 WebUI 自带简体中文语言；boot.sh 首次写入 user_config.yaml(lang: zh)，
+#    打开界面即中文，用户可在界面切换。
+# 4. 网盘文件拦截：WebUI 的 Chat 页为多模态模型提供图片/视频/音频上传入口，
+#    按官方《自动拦截文件选择器》接入统一选择器 + 同源文件桥。
+# 5. 模型下载默认走 hf-mirror.com 镜像；不可达时可通过部署参数配置 HTTP 代理。
+application:
+  subdomain: llamafactory
+  routes:
+    - /=http://llamafactory.cloud.lazycat.app.llamafactory.lzcapp:7860
+  health_check:
+    # Gradio 首次导入 torch/transformers 较慢，start_period 给足 3 分钟
+    test_url: http://llamafactory.cloud.lazycat.app.llamafactory.lzcapp:7860/
+    start_period: 300s
+    timeout: 10s
+  injects:
+    # ── 上游 Gradio 首页引用 /manifest.json 但未提供该文件：404 会进评审控制台。
+    #    返回一个最小合法 Web App Manifest（不伪造图标/品牌，仅消除 404）。
+    - id: lzc-manifest-json
+      'on': request
+      auth_required: false
+      when:
+        - /manifest.json
+      do:
+        - src: |
+            ctx.response.send(200, JSON.stringify({
+              name: "LLaMA Factory",
+              short_name: "LLaMA Factory",
+              start_url: "/",
+              display: "standalone",
+              background_color: "#ffffff",
+              theme_color: "#ffffff"
+            }), { content_type: "application/manifest+json" });
+    # ── 上游未提供 favicon：浏览器请求 /favicon.ico 时直接回 204，避免控制台 404
+    - id: lzc-favicon
+      'on': request
+      auth_required: false
+      when:
+        - /favicon.ico
+      do:
+        - src: |
+            ctx.response.send(204, "", { content_type: "image/x-icon" });
+    # ── 网盘文件桥（request 阶段，官方《自动拦截文件选择器》专题）────────────
+    - id: lazycat-file-bridge
+      'on': request
+      auth_required: false
+      when:
+        - /__lazycat_file_bridge/*
+      do:
+        - src: |
+            const bridgePrefix = "/__lazycat_file_bridge";
+            const requestHost = String(ctx.request.host || "").split(":")[0].toLowerCase();
+            const firstDot = requestHost.indexOf(".");
+            const method = String(ctx.request.method || "").toUpperCase();
+            if (firstDot <= 0 || !requestHost.endsWith(".heiyu.space") ||
+                !["GET", "HEAD", "PUT"].includes(method)) {
+              ctx.response.send(["GET", "HEAD", "PUT"].includes(method) ? 400 : 405,
+                "Invalid LazyCat file bridge request");
+              return;
+            }
+            const boxDomain = requestHost.slice(firstDot + 1);
+            ctx.headers.del("Origin");
+            ctx.headers.del("Referer");
+            ctx.proxy.to("https://file." + boxDomain, {
+              path: "/files/home" + ctx.request.path.slice(bridgePrefix.length),
+              query: ctx.request.raw_query,
+              use_target_host: true,
+              timeout_ms: 120000,
+              on_fail: "error",
+            });
+    # ── 网盘文件选择器（browser 阶段，官方脚本）────────────────────────────
+    - id: open-save-chooser
+      'on': browser
+      auth_required: false
+      when:
+        - /*
+      do:
+        - src: >-
+            file:///lzcapp/pkg/content/lazycat-injects/lzc-file-chooser-inject.js
+          params:
+            diskRoot: /_lzc/files/home
+            fileBridgeRoot: /__lazycat_file_bridge
+            fallbackMime: application/octet-stream
+            locale: auto
+            hooks:
+              fileSystemAccess: true
+              fileInput: true
+              downloadAnchor: true
+
+services:
+  # ── LLaMA Factory WebUI（LlamaBoard，Gradio :7860）───────────────────────
+  llamafactory:
+    image: registry.lazycat.cloud/wans/hiyouga/llamafactory:6ac7cc4a97139fe0
+    entrypoint: /bin/bash
+    command: /lzcapp/pkg/content/boot.sh
+    environment:
+      - TZ=Asia/Shanghai
+      # CPU 设备上限制 BLAS 线程数，避免 WebUI 主进程与训练/推理子进程互相抢核
+      - OMP_NUM_THREADS=8
+      - MKL_NUM_THREADS=8
+      - GRADIO_SERVER_NAME=0.0.0.0
+      - GRADIO_SERVER_PORT=7860
+      - GRADIO_ANALYTICS_ENABLED=False
+      # 模型/数据集下载：默认走国内可达的 HF 镜像，可用部署参数覆盖代理
+      - HF_ENDPOINT=https://hf-mirror.com
+      - HF_HUB_DISABLE_TELEMETRY=1
+      - HF_HOME=/work/cache/hf
+      - MODELSCOPE_CACHE=/work/cache/ms
+      - HTTPS_PROXY={{ if (index .U "http_proxy") }}{{ index .U "http_proxy" }}{{ end }}
+      - HTTP_PROXY={{ if (index .U "http_proxy") }}{{ index .U "http_proxy" }}{{ end }}
+    binds:
+      # WebUI 工作目录（data / saves / llamaboard_cache / cache 全部在其中）
+      - /lzcapp/var/llamafactory/work:/work
+    shm_size: 2g
+    healthcheck:
+      # 镜像基准为 CUDA/PyTorch 开发镜像（含 bash）；用 bash 的 /dev/tcp 探测端口，避免依赖 curl/wget/python 路径
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/7860 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 600s
