@@ -93,11 +93,11 @@ application:
               fileSystemAccess: true
               fileInput: true
               downloadAnchor: true
-
 services:
   # ── LLaMA Factory WebUI（LlamaBoard，Gradio :7860）───────────────────────
   llamafactory:
-    image: registry.lazycat.cloud/wans/hiyouga/llamafactory:6ac7cc4a97139fe0
+    # upstream: docker.io/hiyouga/llamafactory:0.9.5
+    image: registry.lazycat.cloud/wans/hiyouga/llamafactory:39663083ddac3bca
     entrypoint: /bin/bash
     command: /lzcapp/pkg/content/boot.sh
     environment:

@@ -1,5 +1,5 @@
 package: cloud.lazycat.app.llamafactory
-version: 0.9.5-5
+version: 0.9.5
 name: LLaMA Factory 大模型微调工作台
 description: 大模型微调与推理工作台：下载、LoRA 微调、对话、评测并导出 100+ 开源大模型（Llama、Qwen、DeepSeek 等），全中文界面。
 author: hiyouga (LLaMA-Factory)
